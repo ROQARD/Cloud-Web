@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/discord-proxy/:path*",
+      "destination": "https://discord.com/:path*"
+    }
+  ]
+}
