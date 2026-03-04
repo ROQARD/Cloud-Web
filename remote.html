@@ -1,40 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>Cloud Remote</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #111; height: 100vh; display: flex; flex-direction: column; color: white; font-family: sans-serif; }
-        #pad { flex-grow: 1; margin: 10px; border: 2px solid #5865f2; border-radius: 12px; touch-action: none; display: flex; align-items: center; justify-content: center; }
-        .bar { padding: 10px; display: flex; gap: 5px; }
-        input { flex: 1; padding: 12px; border-radius: 8px; border: none; }
+        :root { --discord-blurple: #5865f2; }
+        body { 
+            margin: 0; background: #000; color: white; height: 100vh; 
+            display: flex; flex-direction: column; overflow: hidden; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            touch-action: none; /* Disables Safari default gestures */
+        }
+        .header { padding: 15px; display: flex; gap: 10px; background: #111; border-bottom: 1px solid #333; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; font-size: 16px; }
+        button { padding: 12px 20px; border-radius: 8px; border: none; background: var(--discord-blurple); color: white; font-weight: bold; }
+        
+        #trackpad { 
+            flex: 1; margin: 15px; border: 2px solid #333; border-radius: 15px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            color: #555; text-transform: uppercase; letter-spacing: 2px;
+        }
+        .footer { padding: 20px; display: flex; justify-content: center; background: #111; }
+        #kbd-trigger { width: 80%; background: #333; }
     </style>
 </head>
 <body>
-    <div class="bar">
-        <input type="text" id="target" placeholder="Enter ID">
-        <button onclick="connect()" style="padding: 10px; border-radius: 8px; background: #5865f2; color: white; border: none;">Link</button>
+
+    <div class="header">
+        <input type="text" id="target-id" placeholder="Paste Cloud ID">
+        <button id="connect-btn">LINK</button>
     </div>
-    <div id="pad">TOUCHPAD</div>
+
+    <div id="trackpad">
+        <span id="status">Not Connected</span>
+        <small style="margin-top:10px">Drag = Move | Tap = Click</small>
+    </div>
+
+    <div class="footer">
+        <button id="kbd-trigger">Open Keyboard & Type</button>
+    </div>
+
     <script>
         const peer = new Peer();
-        let conn;
-        function connect() {
-            conn = peer.connect(document.getElementById('target').value);
-        }
-        const pad = document.getElementById('pad');
-        pad.addEventListener('touchmove', (e) => {
-            if(!conn) return;
-            const t = e.touches[0];
-            const r = pad.getBoundingClientRect();
-            conn.send({ type: 'move', x: (t.clientX - r.left)/r.width, y: (t.clientY - r.top)/r.height });
-        });
-        pad.addEventListener('touchstart', (e) => {
-            if(!conn) return;
-            const t = e.touches[0];
-            const r = pad.getBoundingClientRect();
-            conn.send({ type: 'start', x: (t.clientX - r.left)/r.width, y: (t.clientY - r.top)/r.height });
-        });
+        let conn = null;
+
+        // Connection Logic
+        document.getElementById('connect-btn').onclick = () => {
+            const id = document.getElementById('target-id').value;
+            conn = peer.connect(id);
+            conn.on('open', () => {
+                document.getElementById('status').innerText = "CONNECTED";
+                document.getElementById('status').style.color = "var(--discord-blurple)";
+                document.getElementById('trackpad').style.borderColor = "var(--discord-blurple)";
+            });
+        };
+
+        const pad = document.getElementById('trackpad');
+
+        // Touch handling with Safari Overrides
+        const sendData = (e, type) => {
+            if (!conn) return;
+            e.preventDefault(); // Critical for Safari
+            const touch = e.touches[0];
+            const rect = pad.getBoundingClientRect();
+            
+            conn.send({
+                type: type,
+                x: (touch.clientX - rect.left) / rect.width,
+                y: (touch.clientY - rect.top) / rect.height
+            });
+        };
+
+        // Improved Event Listeners for Safari
+        pad.addEventListener('touchstart', e => sendData(e, 'start'), { passive: false });
+        pad.addEventListener('touchmove', e => sendData(e, 'move'), { passive: false });
+
+        // Keyboard Support
+        document.getElementById('kbd-trigger').onclick = () => {
+            const msg = prompt("Type your message for Discord:");
+            if (msg && conn) {
+                conn.send({ type: 'keys', text: msg });
+            }
+        };
     </script>
 </body>
 </html>
