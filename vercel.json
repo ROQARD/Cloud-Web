@@ -1,8 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/discord-app/:path*",
-      "destination": "https://discord.com/:path*"
-    }
-  ]
-}
