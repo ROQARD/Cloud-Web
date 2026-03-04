@@ -2,43 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Cloud Discord</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Remote</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden; background: #313338; }
-        #browser { width: 100%; height: 100%; border: none; }
-        #pointer {
-            position: absolute; width: 25px; height: 25px;
-            background: rgba(88, 101, 242, 0.6); border: 2px solid white;
-            border-radius: 50%; pointer-events: none; z-index: 10000;
-            transform: translate(-50%, -50%);
-        }
+        body { margin: 0; background: #000; height: 100vh; display: flex; flex-direction: column; touch-action: none; }
+        #pad { flex: 1; margin: 20px; border: 2px solid #5865f2; border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #5865f2; font-family: sans-serif; }
     </style>
 </head>
 <body>
-    <div id="pointer"></div>
-    <iframe id="browser" src="/discord-app/app"></iframe>
+    <div id="pad">AUTO-CONNECTING...</div>
 
     <script>
-        // We set a FIXED ID here so you never have to type it
-        const peer = new Peer('my-private-cloud-session-123'); 
-        const pointer = document.getElementById('pointer');
-        
-        peer.on('open', id => console.log('Cloud is ready at ID:', id));
+        const peer = new Peer();
+        let conn = null;
 
-        peer.on('connection', conn => {
-            conn.on('data', data => {
-                const x = data.x * window.innerWidth;
-                const y = data.y * window.innerHeight;
-                pointer.style.left = x + 'px';
-                pointer.style.top = y + 'px';
-
-                if (data.type === 'start') {
-                    const el = document.elementFromPoint(x, y);
-                    if (el) el.click();
-                }
+        // Automatically try to connect to the Static ID we set in index.html
+        peer.on('open', () => {
+            conn = peer.connect('my-private-cloud-session-123');
+            conn.on('open', () => {
+                document.getElementById('pad').innerText = "CONNECTED & READY";
             });
         });
+
+        const pad = document.getElementById('pad');
+        const send = (e, type) => {
+            if (!conn) return;
+            e.preventDefault();
+            const t = e.touches[0];
+            const r = pad.getBoundingClientRect();
+            conn.send({
+                type: type,
+                x: (t.clientX - r.left) / r.width,
+                y: (t.clientY - r.top) / r.height
+            });
+        };
+
+        pad.addEventListener('touchstart', e => send(e, 'start'), {passive: false});
+        pad.addEventListener('touchmove', e => send(e, 'move'), {passive: false});
     </script>
 </body>
 </html>
