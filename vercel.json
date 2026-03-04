@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/discord-proxy/:path*",
+      "source": "/discord-app/:path*",
       "destination": "https://discord.com/:path*"
     }
   ]
