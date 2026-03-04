@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<body style="touch-action: none;"> <div id="touchpad" style="width: 100vw; height: 100vh; background: #222;"></div>
+  <script>
+    const pad = document.getElementById('touchpad');
+    pad.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      const x = touch.clientX / window.innerWidth;
+      const y = touch.clientY / window.innerHeight;
+      // Send x and y to your database here
+    });
+  </script>
+</body>
+</html>
