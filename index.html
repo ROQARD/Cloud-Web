@@ -5,54 +5,66 @@
     <title>Cloud Web Interface</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; height: 100vh; font-family: system-ui; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden; font-family: sans-serif; }
+        
+        /* The Website in the Cloud */
+        #cloud-site {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
         #pointer {
             position: absolute;
-            width: 20px; height: 20px;
-            background: rgba(255, 0, 0, 0.5);
-            border: 2px solid red;
+            width: 25px; height: 25px;
+            background: rgba(0, 112, 243, 0.4);
+            border: 2px solid #0070f3;
             border-radius: 50%;
-            pointer-events: none; /* Allows clicks to pass through to elements below */
-            z-index: 9999;
+            pointer-events: none; 
+            z-index: 10000;
             transform: translate(-50%, -50%);
         }
-        .setup-overlay { padding: 20px; background: white; border: 2px solid black; position: absolute; top: 10%; left: 10%; z-index: 10000; }
+
+        #setup { 
+            position: absolute; top: 20px; left: 20px; 
+            background: white; padding: 15px; border-radius: 8px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10001; 
+        }
     </style>
 </head>
 <body>
-    <div id="pointer"></div>
-    <div id="setup" class="setup-overlay">
-        <h2>Cloud Controller Setup</h2>
-        <p>ID: <b id="my-id">Connecting...</b></p>
-        <p>1. Open <b>/remote.html</b> on your phone.<br>2. Enter this ID and connect.</p>
+
+    <div id="setup">
+        <b>ID:</b> <span id="my-id">Connecting...</span>
     </div>
 
-    <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
-        <button onclick="alert('Button Clicked via Cloud!')" style="padding: 20px; font-size: 20px;">Touch Me From Phone</button>
-    </div>
+    <div id="pointer"></div>
+
+    <iframe id="cloud-site" src="https://discord.com/login"></iframe>
 
     <script>
         const peer = new Peer();
         const pointer = document.getElementById('pointer');
         const setup = document.getElementById('setup');
+        const iframe = document.getElementById('cloud-site');
 
         peer.on('open', id => document.getElementById('my-id').innerText = id);
 
         peer.on('connection', conn => {
-            setup.style.display = 'none';
+            setup.style.opacity = "0.3"; // Dim the setup box once connected
             
             conn.on('data', data => {
                 const x = data.x * window.innerWidth;
                 const y = data.y * window.innerHeight;
                 
-                // Move the visual pointer
                 pointer.style.left = x + 'px';
                 pointer.style.top = y + 'px';
 
-                // Simulate interaction
-                if (data.type === 'start' || data.type === 'move') {
+                if (data.type === 'start') {
+                    // This attempts to click the element at the coordinate
+                    // Note: Browser security may limit clicking inside some iframes
                     const el = document.elementFromPoint(x, y);
-                    if (data.type === 'start' && el) el.click(); 
+                    if (el) el.click();
                 }
             });
         });
