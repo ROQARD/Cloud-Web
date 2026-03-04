@@ -1,48 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Remote</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #111; color: white; height: 100vh; overflow: hidden; touch-action: none; font-family: sans-serif; display: flex; flex-direction: column; }
-        .top { padding: 10px; display: flex; gap: 5px; }
-        #trackpad { flex-grow: 1; margin: 10px; border: 2px solid #5865f2; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-        input, button { padding: 10px; border-radius: 5px; border: none; }
-        input { flex: 1; }
-        button { background: #5865f2; color: white; }
+        body { margin: 0; background: #111; height: 100vh; display: flex; flex-direction: column; color: white; font-family: sans-serif; }
+        #pad { flex-grow: 1; margin: 10px; border: 2px solid #5865f2; border-radius: 12px; touch-action: none; display: flex; align-items: center; justify-content: center; }
+        .bar { padding: 10px; display: flex; gap: 5px; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: none; }
     </style>
 </head>
 <body>
-    <div class="top">
-        <input type="text" id="target-id" placeholder="Paste ID here">
-        <button id="connect">Connect</button>
+    <div class="bar">
+        <input type="text" id="target" placeholder="Enter ID">
+        <button onclick="connect()" style="padding: 10px; border-radius: 8px; background: #5865f2; color: white; border: none;">Link</button>
     </div>
-    <div id="trackpad">DRAG TO MOVE / TAP TO CLICK</div>
-
+    <div id="pad">TOUCHPAD</div>
     <script>
         const peer = new Peer();
-        let conn = null;
-
-        document.getElementById('connect').onclick = () => {
-            conn = peer.connect(document.getElementById('target-id').value);
-        };
-
-        const pad = document.getElementById('trackpad');
-        const send = (e, type) => {
-            if (!conn) return;
+        let conn;
+        function connect() {
+            conn = peer.connect(document.getElementById('target').value);
+        }
+        const pad = document.getElementById('pad');
+        pad.addEventListener('touchmove', (e) => {
+            if(!conn) return;
             const t = e.touches[0];
             const r = pad.getBoundingClientRect();
-            conn.send({
-                type: type,
-                x: (t.clientX - r.left) / r.width,
-                y: (t.clientY - r.top) / r.height
-            });
-        };
-
-        pad.addEventListener('touchstart', e => send(e, 'start'));
-        pad.addEventListener('touchmove', e => send(e, 'move'));
+            conn.send({ type: 'move', x: (t.clientX - r.left)/r.width, y: (t.clientY - r.top)/r.height });
+        });
+        pad.addEventListener('touchstart', (e) => {
+            if(!conn) return;
+            const t = e.touches[0];
+            const r = pad.getBoundingClientRect();
+            conn.send({ type: 'start', x: (t.clientX - r.left)/r.width, y: (t.clientY - r.top)/r.height });
+        });
     </script>
 </body>
 </html>
