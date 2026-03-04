@@ -3,77 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>Cloud Web</title>
+    <title>Cloud Discord</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden; background: #000; font-family: sans-serif; }
-        /* Desktop Styles */
-        #cloud-view { display: none; width: 100%; height: 100%; }
-        #pointer { position: absolute; width: 20px; height: 20px; background: rgba(88, 101, 242, 0.8); border: 2px solid white; border-radius: 50%; pointer-events: none; z-index: 10000; transform: translate(-50%, -50%); display: none; }
-        /* Mobile Styles */
-        #mobile-view { display: none; flex-direction: column; height: 100vh; color: white; text-align: center; }
-        #pad { flex: 1; margin: 20px; border: 2px solid #5865f2; border-radius: 20px; display: flex; align-items: center; justify-content: center; touch-action: none; }
+        body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden; background: #313338; font-family: sans-serif; }
+        
+        /* Cloud View (The Discord Screen) */
+        #cloud-view { display: block; width: 100%; height: 100%; position: relative; }
+        #browser { width: 100%; height: 100%; border: none; }
+        #pointer { 
+            position: absolute; width: 25px; height: 25px; 
+            background: rgba(88, 101, 242, 0.6); border: 2px solid white; 
+            border-radius: 50%; pointer-events: none; z-index: 10000; 
+            transform: translate(-50%, -50%); display: none; 
+        }
+
+        /* Remote View (The Touchpad) */
+        #remote-view { display: none; flex-direction: column; height: 100vh; background: #000; color: white; }
+        #pad { flex: 1; margin: 15px; border: 2px solid #5865f2; border-radius: 15px; display: flex; align-items: center; justify-content: center; touch-action: none; font-weight: bold; }
+
+        /* Floating Switcher */
+        #toggle-btn { 
+            position: absolute; top: 10px; right: 10px; z-index: 20000; 
+            padding: 10px; background: rgba(0,0,0,0.6); color: white; 
+            border: 1px solid #555; border-radius: 5px; font-size: 12px;
+        }
     </style>
 </head>
 <body>
 
+    <button id="toggle-btn" onclick="toggleMode()">📱 CONTROLLER MODE</button>
+
     <div id="cloud-view">
         <div id="pointer"></div>
-        <iframe id="browser" src="/discord-app/app" style="width:100%; height:100%; border:none;"></iframe>
+        <iframe id="browser" src="/discord-app/app"></iframe>
     </div>
 
-    <div id="mobile-view">
-        <div style="padding: 20px;">CLOUD REMOTE</div>
+    <div id="remote-view">
+        <div style="padding: 15px; text-align: center; background: #111;">TOUCHPAD</div>
         <div id="pad">CONNECTING...</div>
     </div>
 
     <script>
-        const CLOUD_ID = 'roqard-private-session';
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const SESSION_ID = 'roqard-cloud-v4';
+        let isController = false;
+        let conn;
 
-        if (!isMobile) {
-            // --- DESKTOP LOGIC ---
-            document.getElementById('cloud-view').style.display = 'block';
-            document.getElementById('pointer').style.display = 'block';
-            const peer = new Peer(CLOUD_ID);
-            const pointer = document.getElementById('pointer');
-
-            peer.on('connection', conn => {
-                conn.on('data', data => {
-                    const x = data.x * window.innerWidth;
-                    const y = data.y * window.innerHeight;
-                    pointer.style.left = x + 'px';
-                    pointer.style.top = y + 'px';
-                    if (data.type === 'start') {
-                        const el = document.elementFromPoint(x, y);
-                        if (el) el.click();
-                    }
-                });
-            });
-        } else {
-            // --- MOBILE LOGIC ---
-            document.getElementById('mobile-view').style.display = 'flex';
-            const peer = new Peer();
-            let conn = null;
-
-            function connect() {
-                conn = peer.connect(CLOUD_ID);
-                conn.on('open', () => { document.getElementById('pad').innerText = "TOUCH TO CONTROL"; });
-                setTimeout(() => { if (!conn.open) connect(); }, 2000);
-            }
-            peer.on('open', connect);
-
-            const pad = document.getElementById('pad');
-            const send = (e, type) => {
-                if (!conn || !conn.open) return;
-                e.preventDefault();
-                const t = e.touches[0];
-                const r = pad.getBoundingClientRect();
-                conn.send({ type, x: (t.clientX - r.left)/r.width, y: (t.clientY - r.top)/r.height });
-            };
-            pad.addEventListener('touchstart', e => send(e, 'start'), {passive: false});
-            pad.addEventListener('touchmove', e => send(e, 'move'), {passive: false});
+        function toggleMode() {
+            isController = !isController;
+            document.getElementById('cloud-view').style.display = isController ? 'none' : 'block';
+            document.getElementById('remote-view').style.display = isController ? 'flex' : 'none';
+            document.getElementById('toggle-btn').innerText = isController ? '🖥️ SHOW DISCORD' : '📱 CONTROLLER MODE';
+            startLogic();
         }
+
+        function startLogic() {
+            const peer = new Peer(isController ? null : SESSION_ID);
+
+            if (!isController) {
+                // CLOUD LOGIC
+                const pointer = document.getElementById('pointer');
+                pointer.style.display = 'block';
+                peer.on('connection', c => {
+                    c.on('data', data => {
+                        const x = data.x * window.innerWidth;
+                        const y = data.y * window.innerHeight;
+                        pointer.style.left = x + 'px';
+                        pointer.style.top = y + 'px';
+                        if (data.type === 'start') {
+                            const el = document.elementFromPoint(x, y);
+                            if (el) el.click();
+                        }
+                    });
+                });
+            } else {
+                // REMOTE LOGIC
+                peer.on('open', () => {
+                    const connect = () => {
+                        conn = peer.connect(SESSION_ID);
+                        conn.on('open', () => { document.getElementById('pad').innerText = "CONNECTED"; });
+                        setTimeout(() => { if(!conn || !conn.open) connect(); }, 2000);
+                    };
+                    connect();
+                });
+            }
+        }
+
+        const pad = document.getElementById('pad');
+        const send = (e, type) => {
+            if (!conn || !conn.open) return;
+            e.preventDefault();
+            const t = e.touches[0];
+            const r = pad.getBoundingClientRect();
+            conn.send({ type, x: (t.clientX - r.left)/r.width, y: (t.clientY - r.top)/r.height });
+        };
+        pad.addEventListener('touchstart', e => send(e, 'start'), {passive: false});
+        pad.addEventListener('touchmove', e => send(e, 'move'), {passive: false});
+
+        // Initialize as Cloud by default
+        startLogic();
     </script>
 </body>
 </html>
